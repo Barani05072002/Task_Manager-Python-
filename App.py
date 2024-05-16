@@ -1,7 +1,8 @@
 from taskmanager import TaskManager 
+from connectDatabase import connect_database
+
 if __name__ == '__main__':
-    dashboard  = TaskManager()
-    dashboard.Import()
+    dashboard  = TaskManager(connect_database())
     sure = 0
     while sure<2:
         try:
@@ -26,6 +27,6 @@ if __name__ == '__main__':
         except:
             print("Enter the correct choice...\n")
     else:
-        dashboard.Export()
+        dashboard.__exit__()
         print("Thank you\n")
 

@@ -1,186 +1,139 @@
-from task import Task
+from connectDatabase import create_table
+from checks import *
 import re
 
 class TaskManager:
-    def __init__(self) -> None:
-        self.task_list = []
-        self.exportInd = -1
-        self.importFlag = False
-        self.isChanged = False
+    def __init__(self,mydb) -> None:
+        self.mydb = mydb
+        if not self.mydb:
+            print('Cannot Access the Database...')
+            print('Please check if the database is connected or not...')
+            return
+        create_table(self.mydb)
 
     def add_task(self) -> str:
-        task_name = input("Enter task title: ")
-        tchance = 3
+        # getting input for title
+        task_name = input("Enter task title(25): ")
+        task_name = title_check(task_name)
+        if not task_name:
+            return "Try Again..."
 
-        while not bool(re.match('^[a-zA-Z]+$',task_name)) and tchance!=0:
-            print(f'you have only {tchance} left !')
-            print("Enter only alpha character only")
-            task_name = input("Enter task title: ")
-            tchance -=1 
+        # getting input for description 
+        desc = input("Enter task description(100): (default: desc) ") or "desc"
+        desc = description_check(desc)
+        if not desc:
+            return "Try Again..."
 
-        if(tchance==0) and not bool(re.match('^[a-zA-Z]+$',task_name)):
-            print("you attain the maximum chance")
-            return 
+        # getting input for priority
+        priority = input("Enter task priority(High/Normal/Low):(default: Normal) ") or "normal" 
+        priority = priority_check(priority)
+        if not priority:
+            return "Try Again..."
         
-        desc = input("Enter task description: (default: desc) ") or "desc"
-        priority = input("Enter task priority(High/Medium/Low):(default: Medium) ") or "medium" 
-        
-        pchance = 3
-        while priority.lower() != "low" and priority.lower() != "medium" and priority.lower() != "high" and pchance!=0:
-            print(f">>> Enter correct value, you have only {pchance} left")
-            priority = input("Enter task priority (High/Medium/Low): ")
-            pchance -= 1
-        
-        if(pchance==0) and priority.lower() != "low" and priority.lower() != "medium" and priority.lower() != "high":
-            print("you attain the maximum chance")
-            return 
-        
-        schance = 3
-        status = input("Enter task status (Pending/Progress/Completed):(default: Progress)") or "Progress"
-        while status.lower() != "pending" and status.lower() != "progress" and status.lower() != "completed" and schance!=0: 
-            print(f">>> Enter correct value, you have only {schance} left")
-            status = input("Enter task status (Pending/Progress/Completed):(default: Progress)") or "Progress"
-            schance -= 1
+        # getting input for status
+        status = input("Enter task status (Pending/In-Progress/Completed):(default: In-Process)") or "in-process"
+        status = status_check(status)
+        if not status:
+            return "Try Again..."
 
-        if(schance==0) and status.lower() != "pending" and status.lower() != "progress" and status.lower() != "completed":
-            print("you attain the maximum chance")
-            return 
-        
-        self.task_list.append(Task(task_name,desc=desc,priority=priority,status=status))
-        return ">>> Task added successfully"
+        query = "INSERT INTO task (title,description,priority,status) values(%s,%s,%s,%s)"
+        try:
+            self.mydb.cursor().execute(query,(task_name,desc,priority,status))
+            self.mydb.commit()
+            return ">>> Task added successfully"
+        except:
+            return ">>> Task cannot added...,Enter the task correctly"
 
     def edit_task(self) -> str:
-        self.isChanged = True
-        id = int(input("Enter the task id: "))
-        while task:=self.get_task_by_id(id):
+        id = input("Enter the task id: ")
+        try:
+            query = "SELECT * FROM task WHERE id="+id
+            mycursor = self.mydb.cursor()
+            mycursor.execute(query)
+            print(mycursor.fetchall())
             key = 0
             while key<5:
                 try:
                     print("1. update title \n2. update description \n3. update priority\n4. update status \n5.exit")
                     key = int(input("Enter the choice (1-5): "))
                     if(key==1):
-                        title = input("Enter the updated title: ")
-                        tchance = 3
-                        while not bool(re.match('^[a-zA-Z]+$',title)) and tchance!=0:
-                            print(f'you have only {tchance} left !')
-                            print("Enter only alpha character only")
-                            title = input("Enter task title: ")
-                            tchance -=1 
-                        if(tchance==0) and not bool(re.match('^[a-zA-Z]+$',title)):
-                            print("you attain the maximum chance")
-                            return
-                        task.title = title
-                        return ">>> Title updated successfully"
+                        title = input("Enter the updated title(25): ")
+                        title = title_check(title)
+                        if not title:
+                            return "Try Again..."
+                        query = "UPDATE task SET title=%s WHERE id=%s"
+                        try:
+                            mycursor.execute(query,(title,id))
+                            self.mydb.commit()
+                            return ">>> Title updated successfully"
+                        except:
+                            return ">>> Title updated failed, Enter the valid Title within 25 words"
 
                     elif(key==2):
-                        desc = input("Enter the updated description: ")
-                        task.desc = desc
-                        return ">>> description updated successfully"
+                        desc = input("Enter the updated description(100): ")
+                        query = "UPDATE task SET description=%s WHERE id=%s"
+                        try:
+                            mycursor.execute(query,(desc,id))
+                            self.mydb.commit()
+                            return ">>> Description updated successfully"
+                        except:
+                            return ">>> Description update Failed, Enter the valid description within 100 words"
                     
                     elif(key==3):
-                        priority = input("Enter task priority(High/Medium/Low):") 
-                        pchance = 3
-
-                        while priority.lower() != "low" and priority.lower() != "medium" and priority.lower() != "high" and pchance!=0:
-                            print(f">>> Enter correct value, you have only {pchance} left")
-                            priority = input("Enter task priority (High/Medium/Low): ")
-                            pchance -= 1
-
-                        if(pchance==0) and task.priority.lower() != "low" and task.priority.lower() != "medium" and task.priority.lower() != "high":
-                            print("you attain the maximum chance")
-                            return 
+                        priority = input("Enter task priority(High/Medium/Low):")
+                        priority = priority_check(priority)
+                        if not priority:
+                            return "Try Again..."
+                        query = "UPDATE task SET priority=%s WHERE id=%s"
+                        try:
+                            mycursor.execute(query,(priority,id))
+                            self.mydb.commit()
+                            return ">>> Priority updated successfully"
+                        except:
+                            return ">>> priority update Failed"
                         
-                        task.priority = priority
-                        return ">>> priority updated successfully"
                     elif(key==4):
-
-                        schance = 3
-                        status = input("Enter task status (Pending/Progress/Completed):(default: Progress)") or "Progress"
-                        while status.lower() != "pending" and status.lower() != "progress" and status.lower() != "completed" and schance!=0: 
-                            print(f">>> Enter correct value, you have only {schance} left")
-                            status = input("Enter task status (Pending/Progress/Completed):(default: Progress)") or "Progress"
-                            schance -= 1
-
-                        if(schance==0) and status.lower() != "pending" and status.lower() != "progress" and status.lower() != "completed":
-                            print("you attain the maximum chance")
-                            return  
-                        
-                        task.status = status
-                        return ">>> Status updated successfully"
+                        status = input("Enter task status (Pending/In-Progress/Completed):")
+                        status = status_check(status)
+                        if not status:
+                            return "Try Again..."
+                        query = "UPDATE task SET status=%s WHERE id=%s"
+                        try:
+                            mycursor.execute(query,(status,id))
+                            self.mydb.commit()
+                            return ">>> Status updated successfully"
+                        except:
+                            return ">>> Status update failed"
                 except:
                     key = 0
                     print(">>> Please enter the valid value!")
-                    
-        return "Id not found"
+        except:
+            return ">>> Id not found ..."
     
     def delete_task(self) -> str:
-        id = int(input("Enter the delete id"))
-        if task := self.get_task_by_id(id):
-            self.task_list.remove(task)
-            self.isChanged = True
-            return 'Deleted Successfully'
-    
-        return "Task is not Founded"
+        id = input("Enter the delete id: ")
+        query = f"DELETE FROM task WHERE id={id}"
+        try:
+            mycursor = self.mydb.cursor()
+            mycursor.execute(query)
+            self.mydb.commit()
+            return ">>> Deleted Successfully"
+        except Exception as ex:
+            return ">>> Enter the correct id"+type(ex).__name__,ex.args
         
-    def get_task_by_id(self,id:int) -> Task:
-        left,right=0,len(self.task_list)-1
-        mid = (left+right)//2
-        while(left<=right):
-            if(self.task_list[mid].id == id):
-                return self.task_list[mid]
-            elif self.task_list[mid].id < id:
-                left = mid+1
-                mid = (left+right)//2
-            else:
-                right = mid-1
-                mid = (left+right)//2
-        return None
-
-    def view_all_tasks(self) ->None:
-        if not len(self.task_list):
-            print("Add the Taskes first")
-        for task in self.task_list:
-            print(task)
-
     def filter_tasks_by_priority(self):
-        if(len(self.task_list)==0):
-            print("\n>>>Add the Task First\n")
-        
-        ref = {"high":1,"medium":0,"low":-1}
-        temp = sorted(self.task_list,key=lambda task:ref[task.priority],reverse=True)
+        query = "SELECT * FROM task"
+        mycursor = self.mydb.cursor()
+        mycursor.execute(query)
+        data = mycursor.fetchall()
+        if not data:
+            print(">>> Enter the task first...")
+
+        ref = {"high":1,"normal":0,"low":-1}
+        temp = sorted(data,key=lambda data:ref[data[3]],reverse=True)
         for task in temp:
-            print(task)
-
-    def Import(self):
-        if(self.importFlag):
-            print("Imported Successfully")
-            return
-        
-        f = open("db.txt","r")
-        for line in f:
-            line = line[:-1] #trim last part
-            line = line.split(',')
-            values = []
-            for j in line:
-                j = j.split(':')
-                values.append(j[1])
-            self.task_list.append(Task(values[1],values[2],values[3],values[4]))
-        f.close()
-        self.exportInd = len(self.task_list)
-        self.importFlag = True
-
-    def Export(self):
-        if(self.isChanged):
-            f = open("db.txt","w")
-            for i in self.task_list:
-                f.write(str(i)+'\n')
-            print(">>> Tasks Saved Successfully")
-            return
-
-        f = open("db.txt","a")
-        for i in range(self.exportInd,len(self.task_list)):
-            f.write(str(self.task_list[i])+'\n')
-        print(">>> Tasks Saved Successfully")
-        f.close()
-
-
+            print(f"id: {task[0]}\ttitle: {task[1]}\tdescription: {task[2]}\tpriority: {task[3]}\tstatus: {task[4]}")
+    
+    def __exit__(self):
+        self.mydb.close()
+        print("Connection Closed...")
